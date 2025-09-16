@@ -3,55 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <title>Piano Brochure Generator</title>
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    .listing { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
-    .listing img { max-width: 150px; display: block; margin-top: 0.5rem; }
-    .checkbox { margin-right: 0.5rem; }
-    #loading { font-style: italic; color: #666; }
-    button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <h1>Piano Brochure Generator</h1>
-  <p>Select which listings you want to include in your PDF brochure:</p>
+  <!-- Firebase v9 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { jsPDF } from "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 
-  <div id="loading">Loading inventory...</div>
-  <div id="listings" style="display:none;"></div>
-
-  <button onclick="generatePDF()">Generate PDF</button>
-
-  <script>
-    // ✅ Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
       projectId: "pianoinv",
-      storageBucket: "pianoinv.firebasestorage.app", // using your provided bucket
+      storageBucket: "pianoinv.firebasestorage.app",
       messagingSenderId: "651707888262",
       appId: "1:651707888262:web:23131a782e31a7bb511707",
       measurementId: "G-1XQLEV28JZ"
     };
 
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
     const listingsDiv = document.getElementById("listings");
     const loadingDiv = document.getElementById("loading");
 
     async function loadListings() {
       try {
-        // ⬇️ Change "pianos" here if your collection has a different name
-        const snapshot = await db.collection("pianos").get();
+        // ⬇️ Change "pianos" to your collection name
+        const snapshot = await getDocs(collection(db, "pianos"));
 
         if (snapshot.empty) {
-          loadingDiv.textContent = "⚠️ No listings found (check collection name).";
+          loadingDiv.textContent = "⚠️ No listings found (check collection name or rules).";
           return;
         }
 
@@ -68,7 +48,7 @@
               Length: ${piano.length || "N/A"}<br>
               Player: ${piano.playerSystem || "N/A"}<br>
               Price: ${piano.price || "N/A"}<br>
-              ${piano.image ? `<img src="${piano.image}">` : ""}
+              ${piano.image ? `<img src="${piano.image}" style="max-width:150px;">` : ""}
             </label>
           `;
           listingsDiv.appendChild(div);
@@ -77,13 +57,12 @@
         loadingDiv.style.display = "none";
         listingsDiv.style.display = "block";
       } catch (err) {
-        console.error(err);
-        loadingDiv.textContent = "❌ Error loading inventory – check Firebase config.";
+        console.error("Firestore error:", err);
+        loadingDiv.textContent = "❌ Error loading inventory (check rules/config).";
       }
     }
 
     async function generatePDF() {
-      const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       let y = 20;
 
@@ -104,21 +83,26 @@
         const div = cb.closest(".listing");
         const lines = div.innerText.split("\n").filter(Boolean);
 
-        // Write text
         lines.forEach(line => {
           if (y > 270) { doc.addPage(); y = 20; }
           doc.text(line, 20, y);
           y += 6;
         });
 
-        // Add image if present
         const imgTag = div.querySelector("img");
         if (imgTag) {
           try {
-            const imgData = await getBase64Image(imgTag.src);
-            doc.addImage(imgData, "JPEG", 140, y - 30, 50, 40);
+            const res = await fetch(imgTag.src);
+            const blob = await res.blob();
+            const reader = new FileReader();
+            const base64 = await new Promise((resolve, reject) => {
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            doc.addImage(base64, "JPEG", 140, y - 30, 50, 40);
           } catch (e) {
-            console.warn("Could not load image", e);
+            console.warn("Image skipped:", e);
           }
         }
 
@@ -129,19 +113,26 @@
       doc.save("piano_brochure.pdf");
     }
 
-    // Helper: fetch image as base64
-    async function getBase64Image(url) {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    }
-
+    window.generatePDF = generatePDF;
     loadListings();
   </script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    .listing { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
+    .listing img { max-width: 150px; display: block; margin-top: 0.5rem; }
+    .checkbox { margin-right: 0.5rem; }
+    #loading { font-style: italic; color: #666; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Piano Brochure Generator</h1>
+  <p>Select which listings you want to include in your PDF brochure:</p>
+
+  <div id="loading">Loading inventory...</div>
+  <div id="listings" style="display:none;"></div>
+
+  <button onclick="generatePDF()">Generate PDF</button>
 </body>
 </html>
