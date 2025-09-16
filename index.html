@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Piano Brochure Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; }
+    .piano-listing {
+      border: 1px solid #ccc; 
+      padding: 10px; 
+      margin: 10px 0; 
+      display: flex; 
+      align-items: center;
+    }
+    .piano-listing img { 
+      width: 120px; 
+      height: auto; 
+      margin-right: 15px; 
+    }
+    .details { flex: 1; }
+    button { margin: 20px 0; padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h1>Ethan Howard Piano Gallery – Brochure Generator</h1>
+  <p>Select the pianos you’d like to include, then click <b>Generate PDF</b>.</p>
+
+  <div id="inventory">Loading inventory...</div>
+  <button onclick="generatePDF()">Generate PDF</button>
+
+  <script>
+    // ✅ Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_KEY",
+      authDomain: "YOUR_APP.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_APP.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function loadInventoryFromFirebase() {
+      const inventoryDiv = document.getElementById("inventory");
+      inventoryDiv.innerHTML = "";
+
+      try {
+        const snapshot = await db.collection("pianos").get();
+        snapshot.forEach(doc => {
+          const piano = doc.data();
+
+          const div = document.createElement("div");
+          div.className = "piano-listing";
+          div.innerHTML = `
+            <input type="checkbox" class="select-piano">
+            <img src="${piano.image || 'https://via.placeholder.com/120'}" alt="Piano">
+            <div class="details">
+              <span class="brand">${piano.brand || ""}</span> 
+              <span class="model">${piano.model || ""}</span><br>
+              Year: <span class="year">${piano.year || ""}</span><br>
+              Finish: <span class="finish">${piano.finish || ""}</span><br>
+              Length: <span class="length">${piano.length || ""}</span><br>
+              Player: <span class="player">${piano.playerSystem || ""}</span><br>
+              Price: <span class="price">${piano.price || ""}</span>
+            </div>
+          `;
+          inventoryDiv.appendChild(div);
+        });
+      } catch (err) {
+        inventoryDiv.innerHTML = "⚠️ Could not load inventory.";
+        console.error(err);
+      }
+    }
+
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 20;
+
+      // Header
+      doc.setFontSize(18);
+      doc.text("Ethan Howard Piano Gallery", 105, y, { align: "center" });
+      y += 10;
+      doc.setFontSize(12);
+      doc.text("Available Pianos – September 2025", 105, y, { align: "center" });
+      y += 20;
+
+      // Selected listings
+      document.querySelectorAll(".piano-listing").forEach(listing => {
+        if (listing.querySelector(".select-piano").checked) {
+          const brand = listing.querySelector(".brand").textContent;
+          const model = listing.querySelector(".model").textContent;
+          const year = listing.querySelector(".year").textContent;
+          const finish = listing.querySelector(".finish").textContent;
+          const length = listing.querySelector(".length").textContent;
+          const player = listing.querySelector(".player").textContent;
+          const price = listing.querySelector(".price").textContent;
+
+          const details = `${brand} ${model}
+Year: ${year}
+Finish: ${finish}
+Length: ${length}
+Player: ${player}
+Price: ${price}`;
+
+          doc.setFontSize(12);
+          doc.text(details, 20, y);
+          y += 40;
+
+          if (y > 260) { doc.addPage(); y = 20; }
+        }
+      });
+
+      // Footer
+      doc.setFontSize(10);
+      doc.text("📞 444-444-4444 | Base Consultation $100/hr", 105, 280, { align: "center" });
+
+      doc.save("piano_brochure.pdf");
+    }
+
+    loadInventoryFromFirebase();
+  </script>
+</body>
+</html>
