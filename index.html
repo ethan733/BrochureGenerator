@@ -3,63 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <title>Piano Brochure Generator</title>
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 2rem; }
     .listing { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
-    .listing img { max-width: 150px; display: block; margin-bottom: 0.5rem; }
+    .listing img { max-width: 150px; display: block; margin-top: 0.5rem; }
     .checkbox { margin-right: 0.5rem; }
-    button { margin-top: 1rem; padding: 0.5rem 1rem; }
+    #loading { font-style: italic; color: #666; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Piano Brochure Generator</h1>
   <p>Select which listings you want to include in your PDF brochure:</p>
 
-  <div id="listings"></div>
+  <div id="loading">Loading inventory...</div>
+  <div id="listings" style="display:none;"></div>
 
   <button onclick="generatePDF()">Generate PDF</button>
 
   <script>
-   // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
-  authDomain: "pianoinv.firebaseapp.com",
-  projectId: "pianoinv",
-  storageBucket: "pianoinv.firebasestorage.app",
-  messagingSenderId: "651707888262",
-  appId: "1:651707888262:web:23131a782e31a7bb511707",
-  measurementId: "G-1XQLEV28JZ"
-};
+    // ✅ Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    };
 
-    // Init Firebase + Firestore
+    // Initialize Firebase
     const app = firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     const listingsDiv = document.getElementById("listings");
+    const loadingDiv = document.getElementById("loading");
 
     async function loadListings() {
-      const snapshot = await db.collection("pianos").get();
-      snapshot.forEach(doc => {
-        const piano = doc.data();
-        const div = document.createElement("div");
-        div.className = "listing";
-        div.innerHTML = `
-          <label>
-            <input type="checkbox" class="checkbox" value="${doc.id}">
-            <b>${piano.brand} ${piano.model}</b><br>
-            Year: ${piano.year || "N/A"}<br>
-            Finish: ${piano.finish || "N/A"}<br>
-            Length: ${piano.length || "N/A"}<br>
-            Player: ${piano.playerSystem || "N/A"}<br>
-            Price: ${piano.price || "N/A"}<br>
-            ${piano.image ? `<img src="${piano.image}">` : ""}
-          </label>
-        `;
-        listingsDiv.appendChild(div);
-      });
+      try {
+        const snapshot = await db.collection("pianos").get();
+
+        if (snapshot.empty) {
+          loadingDiv.textContent = "⚠️ No listings found in Firestore (check collection name).";
+          return;
+        }
+
+        snapshot.forEach(doc => {
+          const piano = doc.data();
+          const div = document.createElement("div");
+          div.className = "listing";
+          div.innerHTML = `
+            <label>
+              <input type="checkbox" class="checkbox" value="${doc.id}">
+              <b>${piano.brand || ""} ${piano.model || ""}</b><br>
+              Year: ${piano.year || "N/A"}<br>
+              Finish: ${piano.finish || "N/A"}<br>
+              Length: ${piano.length || "N/A"}<br>
+              Player: ${piano.playerSystem || "N/A"}<br>
+              Price: ${piano.price || "N/A"}<br>
+              ${piano.image ? `<img src="${piano.image}">` : ""}
+            </label>
+          `;
+          listingsDiv.appendChild(div);
+        });
+
+        loadingDiv.style.display = "none";
+        listingsDiv.style.display = "block";
+      } catch (err) {
+        console.error(err);
+        loadingDiv.textContent = "❌ Error loading inventory – check Firebase config.";
+      }
     }
 
     async function generatePDF() {
@@ -74,16 +90,51 @@ const firebaseConfig = {
       doc.text("Available Pianos", 20, y);
       y += 10;
 
-      document.querySelectorAll(".checkbox:checked").forEach(cb => {
+      const checkboxes = document.querySelectorAll(".checkbox:checked");
+      if (checkboxes.length === 0) {
+        alert("Please select at least one listing.");
+        return;
+      }
+
+      for (const cb of checkboxes) {
         const div = cb.closest(".listing");
-        const text = div.innerText.replace(/\n/g, "\n");
-        y += 10;
+        const lines = div.innerText.split("\n").filter(Boolean);
+
+        // Write text
+        lines.forEach(line => {
+          if (y > 270) { doc.addPage(); y = 20; }
+          doc.text(line, 20, y);
+          y += 6;
+        });
+
+        // Add image if present
+        const imgTag = div.querySelector("img");
+        if (imgTag) {
+          try {
+            const imgData = await getBase64Image(imgTag.src);
+            doc.addImage(imgData, "JPEG", 140, y - 30, 50, 40);
+          } catch (e) {
+            console.warn("Could not load image", e);
+          }
+        }
+
+        y += 20;
         if (y > 270) { doc.addPage(); y = 20; }
-        doc.text(text, 20, y);
-        y += 40;
-      });
+      }
 
       doc.save("piano_brochure.pdf");
+    }
+
+    // Helper: fetch image as base64
+    async function getBase64Image(url) {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
     }
 
     loadListings();
