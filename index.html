@@ -28,3 +28,120 @@
 
   <script>
     // ✅ Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
+      authDomain: "pianoinv.firebaseapp.com",
+      projectId: "pianoinv",
+      storageBucket: "pianoinv.firebasestorage.app", // using your provided bucket
+      messagingSenderId: "651707888262",
+      appId: "1:651707888262:web:23131a782e31a7bb511707",
+      measurementId: "G-1XQLEV28JZ"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const listingsDiv = document.getElementById("listings");
+    const loadingDiv = document.getElementById("loading");
+
+    async function loadListings() {
+      try {
+        // ⬇️ Change "pianos" here if your collection has a different name
+        const snapshot = await db.collection("pianos").get();
+
+        if (snapshot.empty) {
+          loadingDiv.textContent = "⚠️ No listings found (check collection name).";
+          return;
+        }
+
+        snapshot.forEach(doc => {
+          const piano = doc.data();
+          const div = document.createElement("div");
+          div.className = "listing";
+          div.innerHTML = `
+            <label>
+              <input type="checkbox" class="checkbox" value="${doc.id}">
+              <b>${piano.brand || ""} ${piano.model || ""}</b><br>
+              Year: ${piano.year || "N/A"}<br>
+              Finish: ${piano.finish || "N/A"}<br>
+              Length: ${piano.length || "N/A"}<br>
+              Player: ${piano.playerSystem || "N/A"}<br>
+              Price: ${piano.price || "N/A"}<br>
+              ${piano.image ? `<img src="${piano.image}">` : ""}
+            </label>
+          `;
+          listingsDiv.appendChild(div);
+        });
+
+        loadingDiv.style.display = "none";
+        listingsDiv.style.display = "block";
+      } catch (err) {
+        console.error(err);
+        loadingDiv.textContent = "❌ Error loading inventory – check Firebase config.";
+      }
+    }
+
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 20;
+
+      doc.setFontSize(18);
+      doc.text("Ethan Howard Piano Gallery", 20, y);
+      y += 10;
+      doc.setFontSize(12);
+      doc.text("Available Pianos", 20, y);
+      y += 10;
+
+      const checkboxes = document.querySelectorAll(".checkbox:checked");
+      if (checkboxes.length === 0) {
+        alert("Please select at least one listing.");
+        return;
+      }
+
+      for (const cb of checkboxes) {
+        const div = cb.closest(".listing");
+        const lines = div.innerText.split("\n").filter(Boolean);
+
+        // Write text
+        lines.forEach(line => {
+          if (y > 270) { doc.addPage(); y = 20; }
+          doc.text(line, 20, y);
+          y += 6;
+        });
+
+        // Add image if present
+        const imgTag = div.querySelector("img");
+        if (imgTag) {
+          try {
+            const imgData = await getBase64Image(imgTag.src);
+            doc.addImage(imgData, "JPEG", 140, y - 30, 50, 40);
+          } catch (e) {
+            console.warn("Could not load image", e);
+          }
+        }
+
+        y += 20;
+        if (y > 270) { doc.addPage(); y = 20; }
+      }
+
+      doc.save("piano_brochure.pdf");
+    }
+
+    // Helper: fetch image as base64
+    async function getBase64Image(url) {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    loadListings();
+  </script>
+</body>
+</html>
