@@ -3,12 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <title>Piano Brochure Generator</title>
-  <!-- Firebase v9 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-    import { jsPDF } from "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  <!-- Firebase v8 compat -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    .listing { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
+    .listing img { max-width: 150px; display: block; margin-top: 0.5rem; }
+    .checkbox { margin-right: 0.5rem; }
+    #loading { font-style: italic; color: #666; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
+    select { margin-left: 0.5rem; padding: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Piano Brochure Generator</h1>
+  <p>
+    Select a Firestore collection:
+    <select id="collectionSelect" onchange="loadListings()">
+      <option value="pianos">pianos</option>
+      <option value="inventory">inventory</option>
+      <option value="listings">listings</option>
+    </select>
+  </p>
+  <p>Select which listings you want to include in your PDF brochure:</p>
 
+  <div id="loading">Loading inventory...</div>
+  <div id="listings" style="display:none;"></div>
+
+  <button onclick="generatePDF()">Generate PDF</button>
+
+  <script>
+    // ✅ Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
@@ -19,19 +47,27 @@
       measurementId: "G-1XQLEV28JZ"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    // Initialize Firebase (v8 global syntax)
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     const listingsDiv = document.getElementById("listings");
     const loadingDiv = document.getElementById("loading");
+    const collectionSelect = document.getElementById("collectionSelect");
 
     async function loadListings() {
+      listingsDiv.innerHTML = "";
+      listingsDiv.style.display = "none";
+      loadingDiv.style.display = "block";
+      loadingDiv.textContent = "Loading inventory...";
+
+      const collectionName = collectionSelect.value;
+
       try {
-        // ⬇️ Change "pianos" to your collection name
-        const snapshot = await getDocs(collection(db, "pianos"));
+        const snapshot = await db.collection(collectionName).get();
 
         if (snapshot.empty) {
-          loadingDiv.textContent = "⚠️ No listings found (check collection name or rules).";
+          loadingDiv.textContent = `⚠️ No listings found in "${collectionName}" (check name or rules).`;
           return;
         }
 
@@ -48,7 +84,7 @@
               Length: ${piano.length || "N/A"}<br>
               Player: ${piano.playerSystem || "N/A"}<br>
               Price: ${piano.price || "N/A"}<br>
-              ${piano.image ? `<img src="${piano.image}" style="max-width:150px;">` : ""}
+              ${piano.image ? `<img src="${piano.image}">` : ""}
             </label>
           `;
           listingsDiv.appendChild(div);
@@ -63,6 +99,7 @@
     }
 
     async function generatePDF() {
+      const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       let y = 20;
 
@@ -113,26 +150,8 @@
       doc.save("piano_brochure.pdf");
     }
 
-    window.generatePDF = generatePDF;
+    // load default collection on page load
     loadListings();
   </script>
-
-  <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    .listing { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
-    .listing img { max-width: 150px; display: block; margin-top: 0.5rem; }
-    .checkbox { margin-right: 0.5rem; }
-    #loading { font-style: italic; color: #666; }
-    button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <h1>Piano Brochure Generator</h1>
-  <p>Select which listings you want to include in your PDF brochure:</p>
-
-  <div id="loading">Loading inventory...</div>
-  <div id="listings" style="display:none;"></div>
-
-  <button onclick="generatePDF()">Generate PDF</button>
 </body>
 </html>
