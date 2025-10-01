@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Inventory Brochure Generator</title>
+  <title>Piano Inventory Brochure Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -17,8 +17,8 @@
   </style>
 </head>
 <body>
-  <h1>Inventory Brochure Generator</h1>
-  <div id="inventory"></div>
+  <h1>Piano Inventory Brochure Generator</h1>
+  <div id="inventory">Loading inventory...</div>
   <button onclick="openModal()">Create Brochure</button>
 
   <!-- Modal -->
@@ -34,42 +34,72 @@
     </div>
   </div>
 
-  <script>
+  <!-- Firebase + Firestore -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // ✅ Your Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
+      authDomain: "pianoinv.firebaseapp.com",
+      projectId: "pianoinv",
+      storageBucket: "pianoinv.firebasestorage.app",
+      messagingSenderId: "651707888262",
+      appId: "1:651707888262:web:23131a782e31a7bb511707",
+      measurementId: "G-1XQLEV28JZ"
+    };
+
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
     let inventoryData = [];
     let selectedItems = [];
 
-    // Load inventory from JSON
+    // 🔹 Load inventory from Firestore
     async function loadInventory() {
-      const res = await fetch("inventory.json");
-      inventoryData = await res.json();
+      const querySnapshot = await getDocs(collection(db, "inventory"));
+      inventoryData = querySnapshot.docs.map(doc => doc.data());
+
       const container = document.getElementById("inventory");
+      if (inventoryData.length === 0) {
+        container.innerHTML = "<p>No listings found.</p>";
+        return;
+      }
+
       let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Serial</th><th>Color</th><th>Length</th><th>Price</th><th>Photo</th></tr>";
+
       inventoryData.forEach((item, i) => {
         html += `<tr>
           <td><input type="checkbox" onchange="toggleItem(${i}, this.checked)"></td>
-          <td>${item.brand}</td>
-          <td>${item.model}</td>
-          <td>${item.year}</td>
-          <td>${item.serial}</td>
-          <td>${item.color}</td>
-          <td>${item.length}</td>
-          <td>${item.price}</td>
-          <td><a href="${item.photo}" target="_blank">View Photo</a></td>
+          <td>${item.brand || ""}</td>
+          <td>${item.model || ""}</td>
+          <td>${item.year || ""}</td>
+          <td>${item.serial || ""}</td>
+          <td>${item.color || ""}</td>
+          <td>${item.length || ""}</td>
+          <td>${item.price || ""}</td>
+          <td>${item.photo ? `<a href="${item.photo}" target="_blank">View Photo</a>` : ""}</td>
         </tr>`;
       });
+
       html += "</table>";
       container.innerHTML = html;
     }
 
-    function toggleItem(index, checked) {
+    // 🔹 Selection handling
+    window.toggleItem = function(index, checked) {
       if (checked) selectedItems.push(inventoryData[index]);
       else selectedItems = selectedItems.filter(i => i !== inventoryData[index]);
-    }
+    };
 
-    function openModal() { document.getElementById("modal").style.display = "block"; }
-    function closeModal() { document.getElementById("modal").style.display = "none"; }
+    // 🔹 Modal controls
+    window.openModal = function() { document.getElementById("modal").style.display = "block"; }
+    window.closeModal = function() { document.getElementById("modal").style.display = "none"; }
 
-    async function generatePDF() {
+    // 🔹 PDF Generator
+    window.generatePDF = function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       let y = 20;
@@ -83,28 +113,32 @@
 
       selectedItems.forEach(item => {
         doc.setFontSize(14);
-        doc.text(`${item.brand} ${item.model}`, 20, y); y += 8;
+        doc.text(`${item.brand || ""} ${item.model || ""}`, 20, y); y += 8;
 
         doc.setFontSize(11);
-        doc.text(`Year: ${item.year}`, 20, y); y += 6;
-        doc.text(`Serial: ${item.serial}`, 20, y); y += 6;
-        doc.text(`Color: ${item.color}`, 20, y); y += 6;
-        doc.text(`Length: ${item.length}`, 20, y); y += 6;
-        doc.text(`Price: ${item.price}`, 20, y); y += 6;
+        if (item.year) doc.text(`Year: ${item.year}`, 20, y), y += 6;
+        if (item.serial) doc.text(`Serial: ${item.serial}`, 20, y), y += 6;
+        if (item.color) doc.text(`Color: ${item.color}`, 20, y), y += 6;
+        if (item.length) doc.text(`Length: ${item.length}`, 20, y), y += 6;
+        if (item.price) doc.text(`Price: ${item.price}`, 20, y), y += 6;
 
-        // Add photo link
-        doc.setTextColor(0, 0, 255);
-        doc.textWithLink("View Photo", 20, y, { url: item.photo });
-        doc.setTextColor(0, 0, 0);
-        y += 12;
+        if (item.photo) {
+          doc.setTextColor(0, 0, 255);
+          doc.textWithLink("View Photo", 20, y, { url: item.photo });
+          doc.setTextColor(0, 0, 0);
+          y += 12;
+        } else {
+          y += 8;
+        }
 
         if (y > 270) { doc.addPage(); y = 20; }
       });
 
       doc.save("brochure.pdf");
       closeModal();
-    }
+    };
 
+    // Load data on start
     loadInventory();
   </script>
 </body>
