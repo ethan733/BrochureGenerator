@@ -117,6 +117,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+    // ✅ CONFIG
     const CONFIG = {
       galleryName: "World Class Piano Gallery",
       phone: "(555) 123-4567",
@@ -125,6 +126,7 @@
       logoPath: "logo.png"
     };
 
+    // Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
@@ -134,7 +136,6 @@
       appId: "1:651707888262:web:23131a782e31a7bb511707",
       measurementId: "G-1XQLEV28JZ"
     };
-
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
@@ -142,10 +143,12 @@
     let selectedItems = [];
     let logoBase64 = null;
 
+    // Header text
     document.getElementById("siteName").innerText = CONFIG.galleryName;
     document.getElementById("sitePhone").innerText = "Call " + CONFIG.phone + " to order";
     document.getElementById("siteAddress").innerText = CONFIG.address;
 
+    // Convert logo
     async function loadLogo() {
       try {
         const resp = await fetch(CONFIG.logoPath);
@@ -161,6 +164,7 @@
       }
     }
 
+    // Load inventory
     async function loadInventory() {
       try {
         const snap = await getDocs(collection(db, "pianos"));
@@ -180,7 +184,8 @@
         return;
       }
       let html = `<table><tr>
-        <th>Select</th><th>Brand</th><th>Year</th><th>Model</th><th>Length</th><th>Color</th><th>Cost</th><th>Photo</th>
+        <th>Select</th><th>Brand</th><th>Year</th><th>Model</th>
+        <th>Length</th><th>Color</th><th>Cost</th><th>Photo</th>
       </tr>`;
       inventoryData.forEach((item, i) => {
         html += `<tr>
@@ -198,6 +203,7 @@
       container.innerHTML = html;
     }
 
+    // 🔹 Expose globals
     window.toggleItem = function(i, checked) {
       if (checked) selectedItems.push(inventoryData[i]);
       else selectedItems = selectedItems.filter(x => x !== inventoryData[i]);
@@ -206,18 +212,14 @@
     window.openModal = () => { document.getElementById("modal").style.display = "block"; };
     window.closeModal = () => { document.getElementById("modal").style.display = "none"; };
 
-    async function generatePDF() {
+    window.generatePDF = async function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      // load logo if needed
-      if (!logoBase64) {
-        logoBase64 = await loadLogo();
-      }
+      if (!logoBase64) logoBase64 = await loadLogo();
 
       // Cover page
-      const margin = 20;
       if (logoBase64) {
         const imgW = 60;
         const imgX = (pageWidth - imgW) / 2;
@@ -230,8 +232,7 @@
       doc.text("Call " + CONFIG.phone, pageWidth/2, 115, { align: "center" });
       doc.addPage();
 
-      // After cover, list each selected item
-      let y = 25;
+      let y = 35;
       let pageNum = 2;
 
       const addHeader = () => {
@@ -241,12 +242,12 @@
           doc.addImage(logoBase64, "PNG", imgX, 5, imgW, imgW * 0.5);
         }
         doc.setFontSize(16);
-        doc.text(CONFIG.galleryName, pageWidth/2, 15, { align: "center" });
+        doc.text(CONFIG.galleryName, pageWidth/2, 20, { align: "center" });
         doc.setFontSize(10);
-        doc.text(CONFIG.address, pageWidth/2, 21, { align: "center" });
-        doc.text("Call " + CONFIG.phone, pageWidth/2, 27, { align: "center" });
-        doc.line(15, 30, pageWidth-15, 30);
-        y = 35;
+        doc.text(CONFIG.address, pageWidth/2, 26, { align: "center" });
+        doc.text("Call " + CONFIG.phone, pageWidth/2, 32, { align: "center" });
+        doc.line(15, 35, pageWidth-15, 35);
+        y = 42;
       };
 
       const addFooter = () => {
@@ -262,7 +263,7 @@
       for (let i = 0; i < selectedItems.length; i++) {
         const item = selectedItems[i];
 
-        // If there’s a photo, embed it (thumbnail)
+        // Image
         if (item.photo) {
           try {
             const resp = await fetch(item.photo);
@@ -272,17 +273,16 @@
               reader.onload = () => res(reader.result);
               reader.readAsDataURL(blob);
             });
-            const imgW = 40;
-            const imgH =  (imgW * 0.7);
-            doc.addImage(imgData, "PNG", margin, y, imgW, imgH);
+            const imgW = 40, imgH = 28;
+            doc.addImage(imgData, "PNG", 15, y, imgW, imgH);
           } catch (err) {
             console.warn("Could not embed photo:", err);
           }
         }
 
-        // Then the text fields
+        // Text fields
+        const xText = 60;
         doc.setFontSize(12);
-        const xText = margin + 45;  // offset if image is used
         doc.text(`${item.brand || ""} ${item.model || ""} (${item.year || ""})`, xText, y + 5);
         doc.setFontSize(10);
         doc.text(`Length: ${item.length || ""}`, xText, y + 12);
@@ -290,7 +290,6 @@
         doc.text(`Cost: ${item.price || ""}`, xText, y + 24);
 
         y += 40;
-
         if (y > 240 && i < selectedItems.length - 1) {
           addFooter();
           doc.addPage();
@@ -300,11 +299,10 @@
       }
 
       addFooter();
-      doc.save("fancy-piano-brochure.pdf");
-      closeModal();
-    }
+      doc.save("piano-brochure.pdf");
+      window.closeModal();
+    };
 
-    // initialize
     loadLogo();
     loadInventory();
   </script>
