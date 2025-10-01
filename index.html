@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>World Class Piano Gallery – Brochure Generator</title>
+  <title>Piano Brochure Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
@@ -86,10 +86,10 @@
 </head>
 <body>
   <header>
-    <!-- Static logo + title -->
-    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Piano.svg" alt="Logo">
-    <h1>World Class Piano Gallery</h1>
-    <p>Call (555) 123-4567 to order • Delivery Free within 1000 miles</p>
+    <img src="logo.png" alt="Logo" id="siteLogo">
+    <h1 id="siteName"></h1>
+    <p id="sitePhone"></p>
+    <p id="siteAddress"></p>
   </header>
 
   <button class="btn" onclick="openModal()">Create Brochure</button>
@@ -113,7 +113,16 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Your Firebase Config
+    // ✅ CONFIG SECTION (edit here only)
+    const CONFIG = {
+      galleryName: "World Class Piano Gallery",
+      phone: "(555) 123-4567",
+      address: "123 Main Street, Dawsonville, GA 30534",
+      footerNote: "Delivery is FREE within 1000 miles and includes complimentary tuning on arrival.",
+      logoPath: "logo.png"
+    };
+
+    // ✅ Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
@@ -129,6 +138,23 @@
 
     let inventoryData = [];
     let selectedItems = [];
+    let logoBase64 = null;
+
+    // 🔹 Setup site header
+    document.getElementById("siteName").innerText = CONFIG.galleryName;
+    document.getElementById("sitePhone").innerText = "Call " + CONFIG.phone + " to order";
+    document.getElementById("siteAddress").innerText = CONFIG.address;
+
+    // 🔹 Convert logo.png to Base64 for PDF embedding
+    async function loadLogo() {
+      const response = await fetch(CONFIG.logoPath);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    }
 
     // 🔹 Load Piano Inventory
     async function loadInventory() {
@@ -177,34 +203,37 @@
     window.openModal = function() { document.getElementById("modal").style.display = "block"; }
     window.closeModal = function() { document.getElementById("modal").style.display = "none"; }
 
-    // 🔹 PDF Generator (Static Logo + Footer)
-    window.generatePDF = function() {
+    // 🔹 PDF Generator
+    window.generatePDF = async function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      const logoUrl = "https://upload.wikimedia.org/wikipedia/commons/3/3b/Piano.svg"; // static PNG
+      // Load logo once
+      if (!logoBase64) {
+        logoBase64 = await loadLogo();
+      }
 
-      let y = 40;
+      let y = 50;
       let pageNum = 1;
 
       const addHeader = () => {
         doc.setFontSize(18);
-        doc.text("World Class Piano Gallery", pageWidth/2, 15, { align: "center" });
+        doc.text(CONFIG.galleryName, pageWidth/2, 15, { align: "center" });
         doc.setFontSize(11);
-        doc.text("Call (555) 123-4567 to place an order", pageWidth/2, 22, { align: "center" });
-        try {
-          doc.addImage(logoUrl, "PNG", 10, 5, 20, 20);
-        } catch (err) {
-          console.warn("Logo skipped:", err);
+        doc.text("Call " + CONFIG.phone + " to place an order", pageWidth/2, 22, { align: "center" });
+        doc.text(CONFIG.address, pageWidth/2, 28, { align: "center" });
+        if (logoBase64) {
+          doc.addImage(logoBase64, "PNG", 10, 5, 20, 20);
         }
-        doc.line(10, 28, pageWidth-10, 28);
+        doc.line(10, 34, pageWidth-10, 34);
       };
 
       const addFooter = () => {
         doc.setFontSize(9);
         doc.line(10, 280, pageWidth-10, 280);
-        doc.text("Delivery is FREE within 1000 miles and includes complimentary tuning on arrival.", pageWidth/2, 287, { align: "center" });
+        doc.text(CONFIG.footerNote, pageWidth/2, 286, { align: "center" });
+        doc.text(CONFIG.address, pageWidth/2, 292, { align: "center" });
         doc.text("Page " + pageNum, pageWidth-20, 295);
       };
 
@@ -235,7 +264,7 @@
           addFooter();
           doc.addPage();
           pageNum++;
-          y=40;
+          y=50;
           addHeader();
         }
       });
@@ -245,6 +274,8 @@
       closeModal();
     };
 
+    // Load everything
+    loadLogo();
     loadInventory();
   </script>
 </body>
