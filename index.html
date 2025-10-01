@@ -83,6 +83,33 @@
       border-radius: 5px;
     }
     label { font-weight: bold; }
+    #mainArea {
+      display: flex;
+      gap: 20px;
+    }
+    #preview {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+    #inventory {
+      flex: 2;
+    }
+    #preview h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+    .preview-item {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
   </style>
 </head>
 <body>
@@ -94,7 +121,19 @@
   </header>
 
   <button class="btn" onclick="openModal()">Create Brochure</button>
-  <div id="inventory">Loading inventory...</div>
+
+  <div id="mainArea">
+    <!-- Inventory Table -->
+    <div id="inventory">Loading inventory...</div>
+
+    <!-- Live Preview -->
+    <div id="preview">
+      <h2>📄 Brochure Preview</h2>
+      <div id="previewContent">
+        <p>No items selected yet.</p>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal -->
   <div id="modal">
@@ -102,24 +141,27 @@
       <h3>Create Brochure</h3>
 
       <label>Gallery Name:</label>
-      <input type="text" id="galleryName" placeholder="World Class Piano Gallery">
+      <input type="text" id="galleryName" placeholder="World Class Piano Gallery" oninput="updateContactInfo(); updatePreview();">
 
       <label>Phone:</label>
-      <input type="text" id="contactPhone" placeholder="(555) 123-4567">
+      <input type="text" id="contactPhone" placeholder="(555) 123-4567" oninput="updateContactInfo(); updatePreview();">
 
       <label>Address:</label>
-      <input type="text" id="contactAddress" placeholder="123 Main Street, Dawsonville, GA">
+      <input type="text" id="contactAddress" placeholder="123 Main Street, Dawsonville, GA" oninput="updateContactInfo(); updatePreview();">
+
+      <label>Cover Page Tagline:</label>
+      <input type="text" id="coverTagline" placeholder="Exclusive Pianos • Fine Craftsmanship • Professional Service" oninput="updatePreview();">
 
       <label>Footer Note:</label>
-      <input type="text" id="footerNote" placeholder="Delivery FREE within 1000 miles • Complimentary tuning included">
+      <input type="text" id="footerNote" placeholder="Delivery FREE within 1000 miles • Complimentary tuning included" oninput="updatePreview();">
 
       <label>Client Name:</label>
-      <input type="text" id="clientName">
+      <input type="text" id="clientName" oninput="updatePreview();">
 
       <label>Notes:</label>
-      <textarea id="clientNotes" rows="4"></textarea>
+      <textarea id="clientNotes" rows="4" oninput="updatePreview();"></textarea>
 
-      <button class="btn" onclick="updateContactInfo(); generatePDF();">Generate PDF</button>
+      <button class="btn" onclick="generatePDF();">Generate PDF</button>
       <button class="btn" style="background:#6c757d" onclick="closeModal()">Cancel</button>
     </div>
   </div>
@@ -212,7 +254,48 @@
     window.toggleItem = function(i, checked) {
       if (checked) selectedItems.push(inventoryData[i]);
       else selectedItems = selectedItems.filter(x => x !== inventoryData[i]);
+
+      updatePreview();
     };
+
+    function updatePreview() {
+      const preview = document.getElementById("previewContent");
+
+      const galleryName = document.getElementById("siteName").innerText;
+      const contactPhone = document.getElementById("sitePhone").innerText;
+      const contactAddress = document.getElementById("siteAddress").innerText;
+      const coverTagline = document.getElementById("coverTagline")?.value || "Exclusive Pianos • Fine Craftsmanship • Professional Service";
+
+      const clientName = document.getElementById("clientName")?.value;
+      const clientNotes = document.getElementById("clientNotes")?.value;
+
+      let html = `<h3 style="margin:0;">${galleryName}</h3>
+                  <p><em>${coverTagline}</em></p>
+                  <p>${contactAddress} | Call: ${contactPhone}</p>
+                  <hr>`;
+
+      if (clientName || clientNotes) {
+        html += `<p><strong>Prepared for:</strong> ${clientName || ""}</p>`;
+        if (clientNotes) html += `<p><em>${clientNotes}</em></p>`;
+        html += `<hr>`;
+      }
+
+      if (selectedItems.length === 0) {
+        html += "<p>No items selected yet.</p>";
+      } else {
+        selectedItems.forEach(item => {
+          html += `
+            <div class="preview-item">
+              <strong>${item.brand || ""} ${item.model || ""} (${item.year || ""})</strong><br>
+              Length: ${item.length || ""} | Color: ${item.color || ""}<br>
+              <strong>Cost: ${item.price || "Call for Pricing"}</strong><br>
+              ${item.photo ? `<a href="${item.photo}" target="_blank">View Photo</a>` : ""}
+            </div>`;
+        });
+      }
+
+      preview.innerHTML = html;
+    }
 
     window.openModal = () => { document.getElementById("modal").style.display = "block"; };
     window.closeModal = () => { document.getElementById("modal").style.display = "none"; };
@@ -228,19 +311,20 @@
       const galleryName = document.getElementById("siteName").innerText;
       const contactPhone = document.getElementById("sitePhone").innerText;
       const contactAddress = document.getElementById("siteAddress").innerText;
+      const coverTagline = document.getElementById("coverTagline").value || "Exclusive Pianos • Fine Craftsmanship • Professional Service";
       const footerNote = document.getElementById("footerNote").value || "Delivery FREE within 1000 miles • Complimentary tuning included";
 
       const clientName = document.getElementById("clientName").value;
       const clientNotes = document.getElementById("clientNotes").value;
       const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
-      // Cover page
+      // Cover page logo square
       if (logoBase64) {
-        const imgW = 50;
-        const imgH = 35;
-        const imgX = (pageWidth - imgW) / 2;
-        doc.addImage(logoBase64, "PNG", imgX, 20, imgW, imgH);
+        const size = 40;
+        const imgX = (pageWidth - size) / 2;
+        doc.addImage(logoBase64, "PNG", imgX, 20, size, size);
       }
+
       doc.setFontSize(28);
       doc.setFont("helvetica", "bold");
       doc.text(galleryName, pageWidth/2, 95, { align: "center" });
@@ -251,25 +335,25 @@
       doc.text("Call " + contactPhone, pageWidth/2, 118, { align: "center" });
 
       doc.setFontSize(12);
-      doc.text("Exclusive Pianos • Fine Craftsmanship • Professional Service", pageWidth/2, 128, { align: "center" });
+      doc.text(coverTagline, pageWidth/2, 128, { align: "center" });
       doc.addPage();
 
       let y = 35;
       let pageNum = 2;
 
       const addHeader = () => {
+        // small square logo
         if (logoBase64) {
-          const imgW = 30;
-          const imgH = 20;
-          const imgX = (pageWidth - imgW) / 2;
-          doc.addImage(logoBase64, "PNG", imgX, 5, imgW, imgH);
+          const size = 20;
+          const imgX = (pageWidth - size) / 2;
+          doc.addImage(logoBase64, "PNG", imgX, 5, size, size);
         }
+        // watermark square faint
         if (logoBase64) {
-          const wmWidth = pageWidth * 0.6;
-          const wmHeight = wmWidth * 0.4;
-          const wmX = (pageWidth - wmWidth) / 2;
-          const wmY = (pageHeight - wmHeight) / 2;
-          doc.addImage(logoBase64, "PNG", wmX, wmY, wmWidth, wmHeight, "", "FAST", 0.1);
+          const wmSize = pageWidth * 0.5;
+          const wmX = (pageWidth - wmSize) / 2;
+          const wmY = (pageHeight - wmSize) / 2;
+          doc.addImage(logoBase64, "PNG", wmX, wmY, wmSize, wmSize, "", "FAST", 0.1);
         }
         doc.setFontSize(16);
         doc.text(galleryName, pageWidth/2, 20, { align: "center" });
@@ -292,7 +376,7 @@
 
       addHeader();
 
-      // Client info + date
+      // Client info
       if (clientName || clientNotes) {
         doc.setFontSize(14);
         doc.text("Prepared for:", 20, y);
@@ -323,13 +407,13 @@
               reader.onload = () => res(reader.result);
               reader.readAsDataURL(blob);
             });
-            const imgW = 40, imgH = 28;
-            doc.addImage(imgData, "PNG", 15, y, imgW, imgH);
+            const size = 28;
+            doc.addImage(imgData, "PNG", 15, y, size, size);
           } catch (err) {
             console.warn("Could not embed photo:", err);
           }
         }
-        const xText = 60;
+        const xText = 50;
         doc.setFontSize(12);
         doc.text(`${item.brand || ""} ${item.model || ""} (${item.year || ""})`, xText, y + 5);
         doc.setFontSize(10);
@@ -350,11 +434,8 @@
 
       addFooter();
 
-      // ✅ filename with client name
       let filename = "piano-brochure";
-      if (clientName) {
-        filename += "-" + clientName.replace(/\s+/g, "");
-      }
+      if (clientName) filename += "-" + clientName.replace(/\s+/g, "");
       doc.save(filename + ".pdf");
 
       window.closeModal();
