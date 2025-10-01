@@ -2,101 +2,65 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Piano Brochure Generator</title>
-  <!-- Firebase v8 compat -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <!-- jsPDF -->
+  <title>Inventory Brochure Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    .listing { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
-    .listing img { max-width: 150px; display: block; margin-top: 0.5rem; }
-    .checkbox { margin-right: 0.5rem; }
-    #loading { font-style: italic; color: #666; }
-    button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
-    select { margin-left: 0.5rem; padding: 0.25rem; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f4f4f4; }
+    button { margin: 10px 0; padding: 8px 14px; }
+    #modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
+    #modalContent { background:#fff; margin:10% auto; padding:20px; width:300px; border-radius:8px; }
   </style>
 </head>
 <body>
-  <h1>Piano Brochure Generator</h1>
-  <p>
-    Select a Firestore collection:
-    <select id="collectionSelect" onchange="loadListings()">
-      <option value="pianos">pianos</option>
-      <option value="inventory">inventory</option>
-      <option value="listings">listings</option>
-    </select>
-  </p>
-  <p>Select which listings you want to include in your PDF brochure:</p>
+  <h1>Inventory Brochure Generator</h1>
+  <div id="inventory"></div>
+  <button onclick="openModal()">Create Brochure</button>
 
-  <div id="loading">Loading inventory...</div>
-  <div id="listings" style="display:none;"></div>
-
-  <button onclick="generatePDF()">Generate PDF</button>
+  <!-- Modal -->
+  <div id="modal">
+    <div id="modalContent">
+      <h3>Brochure Info</h3>
+      <label>Client Name:</label><br>
+      <input type="text" id="clientName"><br><br>
+      <label>Notes:</label><br>
+      <textarea id="clientNotes"></textarea><br><br>
+      <button onclick="generatePDF()">Generate PDF</button>
+      <button onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
 
   <script>
-    // ✅ Your Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
-      authDomain: "pianoinv.firebaseapp.com",
-      projectId: "pianoinv",
-      storageBucket: "pianoinv.firebasestorage.app",
-      messagingSenderId: "651707888262",
-      appId: "1:651707888262:web:23131a782e31a7bb511707",
-      measurementId: "G-1XQLEV28JZ"
-    };
+    let inventoryData = [];
+    let selectedItems = [];
 
-    // Initialize Firebase (v8 global syntax)
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    const listingsDiv = document.getElementById("listings");
-    const loadingDiv = document.getElementById("loading");
-    const collectionSelect = document.getElementById("collectionSelect");
-
-    async function loadListings() {
-      listingsDiv.innerHTML = "";
-      listingsDiv.style.display = "none";
-      loadingDiv.style.display = "block";
-      loadingDiv.textContent = "Loading inventory...";
-
-      const collectionName = collectionSelect.value;
-
-      try {
-        const snapshot = await db.collection(collectionName).get();
-
-        if (snapshot.empty) {
-          loadingDiv.textContent = `⚠️ No listings found in "${collectionName}" (check name or rules).`;
-          return;
-        }
-
-        snapshot.forEach(doc => {
-          const piano = doc.data();
-          const div = document.createElement("div");
-          div.className = "listing";
-          div.innerHTML = `
-            <label>
-              <input type="checkbox" class="checkbox" value="${doc.id}">
-              <b>${piano.brand || ""} ${piano.model || ""}</b><br>
-              Year: ${piano.year || "N/A"}<br>
-              Finish: ${piano.finish || "N/A"}<br>
-              Length: ${piano.length || "N/A"}<br>
-              Player: ${piano.playerSystem || "N/A"}<br>
-              Price: ${piano.price || "N/A"}<br>
-              ${piano.image ? `<img src="${piano.image}">` : ""}
-            </label>
-          `;
-          listingsDiv.appendChild(div);
-        });
-
-        loadingDiv.style.display = "none";
-        listingsDiv.style.display = "block";
-      } catch (err) {
-        console.error("Firestore error:", err);
-        loadingDiv.textContent = "❌ Error loading inventory (check rules/config).";
-      }
+    async function loadInventory() {
+      const res = await fetch("inventory.json"); // open-read file
+      inventoryData = await res.json();
+      const container = document.getElementById("inventory");
+      let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Price</th></tr>";
+      inventoryData.forEach((item, i) => {
+        html += `<tr>
+          <td><input type="checkbox" onchange="toggleItem(${i}, this.checked)"></td>
+          <td>${item.brand}</td>
+          <td>${item.model}</td>
+          <td>${item.year}</td>
+          <td>${item.price}</td>
+        </tr>`;
+      });
+      html += "</table>";
+      container.innerHTML = html;
     }
+
+    function toggleItem(index, checked) {
+      if (checked) selectedItems.push(inventoryData[index]);
+      else selectedItems = selectedItems.filter(i => i !== inventoryData[index]);
+    }
+
+    function openModal() { document.getElementById("modal").style.display = "block"; }
+    function closeModal() { document.getElementById("modal").style.display = "none"; }
 
     async function generatePDF() {
       const { jsPDF } = window.jspdf;
@@ -104,54 +68,23 @@
       let y = 20;
 
       doc.setFontSize(18);
-      doc.text("Ethan Howard Piano Gallery", 20, y);
-      y += 10;
+      doc.text("Inventory Brochure", 20, y); y += 10;
+
       doc.setFontSize(12);
-      doc.text("Available Pianos", 20, y);
-      y += 10;
+      doc.text("Client: " + document.getElementById("clientName").value, 20, y); y += 10;
+      doc.text("Notes: " + document.getElementById("clientNotes").value, 20, y); y += 20;
 
-      const checkboxes = document.querySelectorAll(".checkbox:checked");
-      if (checkboxes.length === 0) {
-        alert("Please select at least one listing.");
-        return;
-      }
-
-      for (const cb of checkboxes) {
-        const div = cb.closest(".listing");
-        const lines = div.innerText.split("\n").filter(Boolean);
-
-        lines.forEach(line => {
-          if (y > 270) { doc.addPage(); y = 20; }
-          doc.text(line, 20, y);
-          y += 6;
-        });
-
-        const imgTag = div.querySelector("img");
-        if (imgTag) {
-          try {
-            const res = await fetch(imgTag.src);
-            const blob = await res.blob();
-            const reader = new FileReader();
-            const base64 = await new Promise((resolve, reject) => {
-              reader.onloadend = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-            doc.addImage(base64, "JPEG", 140, y - 30, 50, 40);
-          } catch (e) {
-            console.warn("Image skipped:", e);
-          }
-        }
-
-        y += 20;
+      selectedItems.forEach(item => {
+        doc.text(`${item.brand} ${item.model} (${item.year}) - ${item.color || ''}`, 20, y); y += 10;
+        doc.text("Price: " + item.price, 20, y); y += 15;
         if (y > 270) { doc.addPage(); y = 20; }
-      }
+      });
 
-      doc.save("piano_brochure.pdf");
+      doc.save("brochure.pdf");
+      closeModal();
     }
 
-    // load default collection on page load
-    loadListings();
+    loadInventory();
   </script>
 </body>
 </html>
