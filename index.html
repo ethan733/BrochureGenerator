@@ -34,7 +34,7 @@
       padding: 12px 20px;
       font-size: 16px;
       cursor: pointer;
-      margin: 15px 0;
+      margin: 10px 5px;
       transition: background 0.2s;
     }
     .btn:hover { background: #0053a6; }
@@ -58,9 +58,7 @@
       text-transform: uppercase;
       font-size: 14px;
     }
-    tr:hover td {
-      background: #eef5ff;
-    }
+    tr:hover td { background: #eef5ff; }
     #modal {
       display: none;
       position: fixed;
@@ -71,29 +69,28 @@
     }
     #modalContent {
       background: #fff;
-      margin: 10% auto;
+      margin: 5% auto;
       padding: 25px;
-      width: 380px;
+      width: 420px;
       border-radius: 8px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.25);
     }
     input, textarea {
       width: 100%;
-      margin: 8px 0 20px;
+      margin: 8px 0 15px;
       padding: 8px;
       border: 1px solid #bbb;
       border-radius: 5px;
     }
-    a { color: #0069d9; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    label { font-weight: bold; }
   </style>
 </head>
 <body>
   <header>
     <img src="logo.png" alt="Logo" id="siteLogo">
-    <h1 id="siteName"></h1>
-    <p id="sitePhone"></p>
-    <p id="siteAddress"></p>
+    <h1 id="siteName">World Class Piano Gallery</h1>
+    <p id="sitePhone">(555) 123-4567</p>
+    <p id="siteAddress">123 Main Street, Dawsonville, GA</p>
   </header>
 
   <button class="btn" onclick="openModal()">Create Brochure</button>
@@ -103,10 +100,25 @@
   <div id="modal">
     <div id="modalContent">
       <h3>Create Brochure</h3>
+
+      <label>Gallery Name:</label>
+      <input type="text" id="galleryName" placeholder="World Class Piano Gallery">
+
+      <label>Phone:</label>
+      <input type="text" id="contactPhone" placeholder="(555) 123-4567">
+
+      <label>Address:</label>
+      <input type="text" id="contactAddress" placeholder="123 Main Street, Dawsonville, GA">
+
+      <label>Footer Note:</label>
+      <input type="text" id="footerNote" placeholder="Delivery FREE within 1000 miles • Complimentary tuning included">
+
       <label>Client Name:</label>
       <input type="text" id="clientName">
+
       <label>Notes:</label>
       <textarea id="clientNotes" rows="4"></textarea>
+
       <button class="btn" onclick="generatePDF()">Generate PDF</button>
       <button class="btn" style="background:#6c757d" onclick="closeModal()">Cancel</button>
     </div>
@@ -117,16 +129,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ CONFIG
-    const CONFIG = {
-      galleryName: "World Class Piano Gallery",
-      phone: "(555) 123-4567",
-      address: "123 Main Street, Dawsonville, GA",
-      footerNote: "Delivery FREE within 1000 miles • Complimentary tuning included",
-      logoPath: "logo.png"
-    };
-
-    // Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
@@ -136,6 +138,7 @@
       appId: "1:651707888262:web:23131a782e31a7bb511707",
       measurementId: "G-1XQLEV28JZ"
     };
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
@@ -143,15 +146,10 @@
     let selectedItems = [];
     let logoBase64 = null;
 
-    // Header text
-    document.getElementById("siteName").innerText = CONFIG.galleryName;
-    document.getElementById("sitePhone").innerText = "Call " + CONFIG.phone + " to order";
-    document.getElementById("siteAddress").innerText = CONFIG.address;
-
     // Convert logo
     async function loadLogo() {
       try {
-        const resp = await fetch(CONFIG.logoPath);
+        const resp = await fetch("logo.png");
         const blob = await resp.blob();
         return new Promise((resolve) => {
           const reader = new FileReader();
@@ -164,7 +162,6 @@
       }
     }
 
-    // Load inventory
     async function loadInventory() {
       try {
         const snap = await getDocs(collection(db, "pianos"));
@@ -203,7 +200,7 @@
       container.innerHTML = html;
     }
 
-    // 🔹 Expose globals
+    // Globals
     window.toggleItem = function(i, checked) {
       if (checked) selectedItems.push(inventoryData[i]);
       else selectedItems = selectedItems.filter(x => x !== inventoryData[i]);
@@ -212,12 +209,25 @@
     window.openModal = () => { document.getElementById("modal").style.display = "block"; };
     window.closeModal = () => { document.getElementById("modal").style.display = "none"; };
 
+    // PDF Generator
     window.generatePDF = async function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
       if (!logoBase64) logoBase64 = await loadLogo();
+
+      // Get inputs
+      const galleryName = document.getElementById("galleryName").value || "World Class Piano Gallery";
+      const contactPhone = document.getElementById("contactPhone").value || "(555) 123-4567";
+      const contactAddress = document.getElementById("contactAddress").value || "123 Main Street, Dawsonville, GA";
+      const footerNote = document.getElementById("footerNote").value || "Delivery FREE within 1000 miles • Complimentary tuning included";
+
+      // ✅ Background watermark
+      if (logoBase64) {
+        doc.addImage(logoBase64, "PNG", pageWidth/4, pageHeight/4, pageWidth/2, pageWidth/4, "", "NONE", 0.1);
+      }
 
       // Cover page
       if (logoBase64) {
@@ -226,10 +236,10 @@
         doc.addImage(logoBase64, "PNG", imgX, 20, imgW, imgW * 0.5);
       }
       doc.setFontSize(24);
-      doc.text(CONFIG.galleryName, pageWidth/2, 90, { align: "center" });
+      doc.text(galleryName, pageWidth/2, 90, { align: "center" });
       doc.setFontSize(14);
-      doc.text(CONFIG.address, pageWidth/2, 105, { align: "center" });
-      doc.text("Call " + CONFIG.phone, pageWidth/2, 115, { align: "center" });
+      doc.text(contactAddress, pageWidth/2, 105, { align: "center" });
+      doc.text("Call " + contactPhone, pageWidth/2, 115, { align: "center" });
       doc.addPage();
 
       let y = 35;
@@ -242,10 +252,10 @@
           doc.addImage(logoBase64, "PNG", imgX, 5, imgW, imgW * 0.5);
         }
         doc.setFontSize(16);
-        doc.text(CONFIG.galleryName, pageWidth/2, 20, { align: "center" });
+        doc.text(galleryName, pageWidth/2, 20, { align: "center" });
         doc.setFontSize(10);
-        doc.text(CONFIG.address, pageWidth/2, 26, { align: "center" });
-        doc.text("Call " + CONFIG.phone, pageWidth/2, 32, { align: "center" });
+        doc.text(contactAddress, pageWidth/2, 26, { align: "center" });
+        doc.text("Call " + contactPhone, pageWidth/2, 32, { align: "center" });
         doc.line(15, 35, pageWidth-15, 35);
         y = 42;
       };
@@ -253,8 +263,8 @@
       const addFooter = () => {
         doc.setFontSize(9);
         doc.line(15, 280, pageWidth-15, 280);
-        doc.text(CONFIG.footerNote, pageWidth/2, 286, { align: "center" });
-        doc.text(CONFIG.address, pageWidth/2, 292, { align: "center" });
+        doc.text(footerNote, pageWidth/2, 286, { align: "center" });
+        doc.text(contactAddress, pageWidth/2, 292, { align: "center" });
         doc.text("Page " + pageNum, pageWidth-20, 295);
       };
 
@@ -263,7 +273,7 @@
       for (let i = 0; i < selectedItems.length; i++) {
         const item = selectedItems[i];
 
-        // Image
+        // Embed image if available
         if (item.photo) {
           try {
             const resp = await fetch(item.photo);
