@@ -57,9 +57,7 @@
       text-transform: uppercase;
       font-size: 13px;
     }
-    tr:hover td {
-      background: #f1f7ff;
-    }
+    tr:hover td { background: #f1f7ff; }
     #modal {
       display:none;
       position:fixed;
@@ -75,10 +73,6 @@
       border-radius:8px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    #modalContent h3 {
-      margin-top: 0;
-      font-size: 18px;
-    }
     input, textarea {
       width: 100%;
       margin: 5px 0 15px;
@@ -86,15 +80,13 @@
       border: 1px solid #ccc;
       border-radius: 5px;
     }
-    a {
-      color: #007bff;
-      text-decoration: none;
-    }
+    a { color: #007bff; text-decoration: none; }
     a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <header>
+    <!-- Static logo + title -->
     <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Piano.svg" alt="Logo">
     <h1>World Class Piano Gallery</h1>
     <p>Call (555) 123-4567 to order • Delivery Free within 1000 miles</p>
@@ -121,7 +113,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Your Firebase Config (fixed storageBucket)
+    // ✅ Your Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
@@ -138,7 +130,7 @@
     let inventoryData = [];
     let selectedItems = [];
 
-    // 🔹 Load inventory from Firestore
+    // 🔹 Load Piano Inventory
     async function loadInventory() {
       try {
         const querySnapshot = await getDocs(collection(db, "pianos"));
@@ -185,13 +177,13 @@
     window.openModal = function() { document.getElementById("modal").style.display = "block"; }
     window.closeModal = function() { document.getElementById("modal").style.display = "none"; }
 
-    // 🔹 PDF Generator
+    // 🔹 PDF Generator (Static Logo + Footer)
     window.generatePDF = function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      const logoUrl = "https://upload.wikimedia.org/wikipedia/commons/3/3b/Piano.svg";
+      const logoUrl = "https://upload.wikimedia.org/wikipedia/commons/3/3b/Piano.svg"; // static PNG
 
       let y = 40;
       let pageNum = 1;
@@ -201,7 +193,11 @@
         doc.text("World Class Piano Gallery", pageWidth/2, 15, { align: "center" });
         doc.setFontSize(11);
         doc.text("Call (555) 123-4567 to place an order", pageWidth/2, 22, { align: "center" });
-        doc.addImage(logoUrl, "PNG", 10, 5, 20, 20);
+        try {
+          doc.addImage(logoUrl, "PNG", 10, 5, 20, 20);
+        } catch (err) {
+          console.warn("Logo skipped:", err);
+        }
         doc.line(10, 28, pageWidth-10, 28);
       };
 
