@@ -146,7 +146,6 @@
     let selectedItems = [];
     let logoBase64 = null;
 
-    // Convert logo
     async function loadLogo() {
       try {
         const resp = await fetch("logo.png");
@@ -200,7 +199,6 @@
       container.innerHTML = html;
     }
 
-    // 🔹 Update contact info in header
     window.updateContactInfo = function() {
       const galleryName = document.getElementById("galleryName").value || "World Class Piano Gallery";
       const contactPhone = document.getElementById("contactPhone").value || "(555) 123-4567";
@@ -219,7 +217,6 @@
     window.openModal = () => { document.getElementById("modal").style.display = "block"; };
     window.closeModal = () => { document.getElementById("modal").style.display = "none"; };
 
-    // 🔹 PDF Generator
     window.generatePDF = async function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -233,14 +230,9 @@
       const contactAddress = document.getElementById("siteAddress").innerText;
       const footerNote = document.getElementById("footerNote").value || "Delivery FREE within 1000 miles • Complimentary tuning included";
 
-      // ✅ Background watermark (faint, centered)
-      if (logoBase64) {
-        const wmWidth = pageWidth * 0.6;
-        const wmHeight = wmWidth * 0.4;
-        const wmX = (pageWidth - wmWidth) / 2;
-        const wmY = (pageHeight - wmHeight) / 2;
-        doc.addImage(logoBase64, "PNG", wmX, wmY, wmWidth, wmHeight, "", "FAST", 0.1);
-      }
+      const clientName = document.getElementById("clientName").value;
+      const clientNotes = document.getElementById("clientNotes").value;
+      const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
       // Cover page
       if (logoBase64) {
@@ -249,11 +241,17 @@
         const imgX = (pageWidth - imgW) / 2;
         doc.addImage(logoBase64, "PNG", imgX, 20, imgW, imgH);
       }
-      doc.setFontSize(24);
-      doc.text(galleryName, pageWidth/2, 90, { align: "center" });
+      doc.setFontSize(28);
+      doc.setFont("helvetica", "bold");
+      doc.text(galleryName, pageWidth/2, 95, { align: "center" });
+
       doc.setFontSize(14);
-      doc.text(contactAddress, pageWidth/2, 105, { align: "center" });
-      doc.text("Call " + contactPhone, pageWidth/2, 115, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      doc.text(contactAddress, pageWidth/2, 110, { align: "center" });
+      doc.text("Call " + contactPhone, pageWidth/2, 118, { align: "center" });
+
+      doc.setFontSize(12);
+      doc.text("Exclusive Pianos • Fine Craftsmanship • Professional Service", pageWidth/2, 128, { align: "center" });
       doc.addPage();
 
       let y = 35;
@@ -265,6 +263,13 @@
           const imgH = 20;
           const imgX = (pageWidth - imgW) / 2;
           doc.addImage(logoBase64, "PNG", imgX, 5, imgW, imgH);
+        }
+        if (logoBase64) {
+          const wmWidth = pageWidth * 0.6;
+          const wmHeight = wmWidth * 0.4;
+          const wmX = (pageWidth - wmWidth) / 2;
+          const wmY = (pageHeight - wmHeight) / 2;
+          doc.addImage(logoBase64, "PNG", wmX, wmY, wmWidth, wmHeight, "", "FAST", 0.1);
         }
         doc.setFontSize(16);
         doc.text(galleryName, pageWidth/2, 20, { align: "center" });
@@ -278,17 +283,37 @@
       const addFooter = () => {
         doc.setFontSize(9);
         doc.line(15, 280, pageWidth-15, 280);
+        doc.setFont("helvetica", "bold");
         doc.text(footerNote, pageWidth/2, 286, { align: "center" });
+        doc.setFont("helvetica", "normal");
         doc.text(contactAddress, pageWidth/2, 292, { align: "center" });
         doc.text("Page " + pageNum, pageWidth-20, 295);
       };
 
       addHeader();
 
+      // Client info + date
+      if (clientName || clientNotes) {
+        doc.setFontSize(14);
+        doc.text("Prepared for:", 20, y);
+        doc.setFontSize(12);
+        if (clientName) {
+          doc.text(clientName, 20, y + 8);
+          y += 10;
+        }
+        if (clientNotes) {
+          const splitNotes = doc.splitTextToSize(clientNotes, pageWidth - 40);
+          doc.text(splitNotes, 20, y + 8);
+          y += (splitNotes.length * 6) + 12;
+        }
+        doc.setFontSize(11);
+        doc.text("Prepared on: " + today, 20, y + 8);
+        y += 20;
+      }
+
+      // Listings
       for (let i = 0; i < selectedItems.length; i++) {
         const item = selectedItems[i];
-
-        // Embed image if available
         if (item.photo) {
           try {
             const resp = await fetch(item.photo);
@@ -304,15 +329,15 @@
             console.warn("Could not embed photo:", err);
           }
         }
-
-        // Text fields
         const xText = 60;
         doc.setFontSize(12);
         doc.text(`${item.brand || ""} ${item.model || ""} (${item.year || ""})`, xText, y + 5);
         doc.setFontSize(10);
         doc.text(`Length: ${item.length || ""}`, xText, y + 12);
         doc.text(`Color: ${item.color || ""}`, xText, y + 18);
-        doc.text(`Cost: ${item.price || ""}`, xText, y + 24);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Cost: ${item.price || "Call for Pricing"}`, xText, y + 24);
+        doc.setFont("helvetica", "normal");
 
         y += 40;
         if (y > 240 && i < selectedItems.length - 1) {
@@ -324,7 +349,14 @@
       }
 
       addFooter();
-      doc.save("piano-brochure.pdf");
+
+      // ✅ filename with client name
+      let filename = "piano-brochure";
+      if (clientName) {
+        filename += "-" + clientName.replace(/\s+/g, "");
+      }
+      doc.save(filename + ".pdf");
+
       window.closeModal();
     };
 
