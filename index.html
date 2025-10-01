@@ -2,35 +2,117 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Piano Inventory Brochure Generator</title>
+  <title>World Class Piano Gallery – Brochure Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background: #f4f4f4; }
-    button { margin: 10px 0; padding: 8px 14px; cursor:pointer; }
-    #modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
-    #modalContent { background:#fff; margin:10% auto; padding:20px; width:300px; border-radius:8px; }
-    textarea, input { width: 100%; }
-    a { color: #007bff; text-decoration: none; }
+    body {
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    header img {
+      height: 70px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 26px;
+      color: #111;
+    }
+    .btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 18px;
+      font-size: 15px;
+      cursor: pointer;
+      margin: 10px 0;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #0056b3; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #007bff;
+      color: white;
+      text-transform: uppercase;
+      font-size: 13px;
+    }
+    tr:hover td {
+      background: #f1f7ff;
+    }
+    #modal {
+      display:none;
+      position:fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background:rgba(0,0,0,0.5);
+    }
+    #modalContent {
+      background:#fff;
+      margin:10% auto;
+      padding:20px;
+      width:350px;
+      border-radius:8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    #modalContent h3 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    input, textarea {
+      width: 100%;
+      margin: 5px 0 15px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>Piano Inventory Brochure Generator</h1>
+  <header>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Piano.svg" alt="Logo">
+    <h1>World Class Piano Gallery</h1>
+    <p>Call (555) 123-4567 to order • Delivery Free within 1000 miles</p>
+  </header>
+
+  <button class="btn" onclick="openModal()">Create Brochure</button>
   <div id="inventory">Loading inventory...</div>
-  <button onclick="openModal()">Create Brochure</button>
 
   <!-- Modal -->
   <div id="modal">
     <div id="modalContent">
-      <h3>Brochure Info</h3>
-      <label>Client Name:</label><br>
-      <input type="text" id="clientName"><br><br>
-      <label>Notes:</label><br>
-      <textarea id="clientNotes"></textarea><br><br>
-      <button onclick="generatePDF()">Generate PDF</button>
-      <button onclick="closeModal()">Cancel</button>
+      <h3>Create Brochure</h3>
+      <label>Client Name:</label>
+      <input type="text" id="clientName">
+      <label>Notes:</label>
+      <textarea id="clientNotes" rows="4"></textarea>
+      <button class="btn" onclick="generatePDF()">Generate PDF</button>
+      <button class="btn" style="background:#6c757d" onclick="closeModal()">Cancel</button>
     </div>
   </div>
 
@@ -39,18 +121,17 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Your Firebase Config
+    // ✅ Your Firebase Config (fixed storageBucket)
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
       projectId: "pianoinv",
-      storageBucket: "pianoinv.firebasestorage.app",
+      storageBucket: "pianoinv.appspot.com",
       messagingSenderId: "651707888262",
       appId: "1:651707888262:web:23131a782e31a7bb511707",
       measurementId: "G-1XQLEV28JZ"
     };
 
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
@@ -59,9 +140,18 @@
 
     // 🔹 Load inventory from Firestore
     async function loadInventory() {
-      const querySnapshot = await getDocs(collection(db, "inventory"));
-      inventoryData = querySnapshot.docs.map(doc => doc.data());
+      try {
+        const querySnapshot = await getDocs(collection(db, "pianos"));
+        inventoryData = querySnapshot.docs.map(doc => doc.data());
+        renderTable();
+      } catch (err) {
+        document.getElementById("inventory").innerHTML =
+          "<p>❌ Could not load inventory. Check Firestore rules.</p>";
+        console.error("Firestore error:", err);
+      }
+    }
 
+    function renderTable() {
       const container = document.getElementById("inventory");
       if (inventoryData.length === 0) {
         container.innerHTML = "<p>No listings found.</p>";
@@ -69,7 +159,6 @@
       }
 
       let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Serial</th><th>Color</th><th>Length</th><th>Price</th><th>Photo</th></tr>";
-
       inventoryData.forEach((item, i) => {
         html += `<tr>
           <td><input type="checkbox" onchange="toggleItem(${i}, this.checked)"></td>
@@ -80,21 +169,19 @@
           <td>${item.color || ""}</td>
           <td>${item.length || ""}</td>
           <td>${item.price || ""}</td>
-          <td>${item.photo ? `<a href="${item.photo}" target="_blank">View Photo</a>` : ""}</td>
+          <td>${item.photo ? `<a href="${item.photo}" target="_blank">View</a>` : ""}</td>
         </tr>`;
       });
-
       html += "</table>";
       container.innerHTML = html;
     }
 
-    // 🔹 Selection handling
+    // Handle selection
     window.toggleItem = function(index, checked) {
       if (checked) selectedItems.push(inventoryData[index]);
       else selectedItems = selectedItems.filter(i => i !== inventoryData[index]);
     };
 
-    // 🔹 Modal controls
     window.openModal = function() { document.getElementById("modal").style.display = "block"; }
     window.closeModal = function() { document.getElementById("modal").style.display = "none"; }
 
@@ -102,43 +189,66 @@
     window.generatePDF = function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      let y = 20;
+      const pageWidth = doc.internal.pageSize.getWidth();
 
-      doc.setFontSize(18);
-      doc.text("Inventory Brochure", 20, y); y += 12;
+      const logoUrl = "https://upload.wikimedia.org/wikipedia/commons/3/3b/Piano.svg";
 
-      doc.setFontSize(12);
-      doc.text("Client: " + document.getElementById("clientName").value, 20, y); y += 8;
-      doc.text("Notes: " + document.getElementById("clientNotes").value, 20, y); y += 15;
+      let y = 40;
+      let pageNum = 1;
 
-      selectedItems.forEach(item => {
-        doc.setFontSize(14);
-        doc.text(`${item.brand || ""} ${item.model || ""}`, 20, y); y += 8;
-
+      const addHeader = () => {
+        doc.setFontSize(18);
+        doc.text("World Class Piano Gallery", pageWidth/2, 15, { align: "center" });
         doc.setFontSize(11);
-        if (item.year) doc.text(`Year: ${item.year}`, 20, y), y += 6;
-        if (item.serial) doc.text(`Serial: ${item.serial}`, 20, y), y += 6;
-        if (item.color) doc.text(`Color: ${item.color}`, 20, y), y += 6;
-        if (item.length) doc.text(`Length: ${item.length}`, 20, y), y += 6;
-        if (item.price) doc.text(`Price: ${item.price}`, 20, y), y += 6;
+        doc.text("Call (555) 123-4567 to place an order", pageWidth/2, 22, { align: "center" });
+        doc.addImage(logoUrl, "PNG", 10, 5, 20, 20);
+        doc.line(10, 28, pageWidth-10, 28);
+      };
+
+      const addFooter = () => {
+        doc.setFontSize(9);
+        doc.line(10, 280, pageWidth-10, 280);
+        doc.text("Delivery is FREE within 1000 miles and includes complimentary tuning on arrival.", pageWidth/2, 287, { align: "center" });
+        doc.text("Page " + pageNum, pageWidth-20, 295);
+      };
+
+      addHeader();
+      doc.setFontSize(12);
+      doc.text("Client: " + document.getElementById("clientName").value, 14, y); y+=8;
+      doc.text("Notes: " + document.getElementById("clientNotes").value, 14, y); y+=12;
+
+      selectedItems.forEach((item, i) => {
+        doc.setFontSize(14);
+        doc.text(`${item.brand || ""} ${item.model || ""}`, 14, y); y+=7;
+        doc.setFontSize(11);
+        if (item.year) doc.text(`Year: ${item.year}`, 14, y), y+=6;
+        if (item.serial) doc.text(`Serial: ${item.serial}`, 14, y), y+=6;
+        if (item.color) doc.text(`Color: ${item.color}`, 14, y), y+=6;
+        if (item.length) doc.text(`Length: ${item.length}`, 14, y), y+=6;
+        if (item.price) doc.text(`Price: ${item.price}`, 14, y), y+=6;
 
         if (item.photo) {
-          doc.setTextColor(0, 0, 255);
-          doc.textWithLink("View Photo", 20, y, { url: item.photo });
-          doc.setTextColor(0, 0, 0);
-          y += 12;
-        } else {
-          y += 8;
-        }
+          doc.setTextColor(0,0,255);
+          doc.textWithLink("View Photo", 14, y, { url: item.photo });
+          doc.setTextColor(0,0,0);
+          y+=10;
+        } else { y+=6; }
 
-        if (y > 270) { doc.addPage(); y = 20; }
+        y+=4;
+        if (y>250 && i < selectedItems.length-1) {
+          addFooter();
+          doc.addPage();
+          pageNum++;
+          y=40;
+          addHeader();
+        }
       });
 
-      doc.save("brochure.pdf");
+      addFooter();
+      doc.save("piano-brochure.pdf");
       closeModal();
     };
 
-    // Load data on start
     loadInventory();
   </script>
 </body>
