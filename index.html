@@ -7,80 +7,84 @@
   <style>
     body {
       font-family: "Segoe UI", Tahoma, sans-serif;
-      background: #f8f9fa;
+      background: #f4f4f8;
       margin: 0;
       padding: 20px;
       color: #333;
     }
     header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
     }
     header img {
-      height: 70px;
-      margin-bottom: 10px;
+      height: 90px;
+      display: block;
+      margin: 0 auto 10px;
     }
     h1 {
       margin: 0;
-      font-size: 26px;
-      color: #111;
+      font-size: 30px;
+      color: #222;
     }
     .btn {
-      background: #007bff;
+      background: #0069d9;
       color: white;
       border: none;
       border-radius: 5px;
-      padding: 10px 18px;
-      font-size: 15px;
+      padding: 12px 20px;
+      font-size: 16px;
       cursor: pointer;
-      margin: 10px 0;
+      margin: 15px 0;
       transition: background 0.2s;
     }
-    .btn:hover { background: #0056b3; }
+    .btn:hover { background: #0053a6; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
+      margin-top: 20px;
       background: white;
       border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     th, td {
-      padding: 12px;
+      padding: 12px 15px;
       text-align: left;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #ececec;
     }
     th {
-      background: #007bff;
+      background: #0069d9;
       color: white;
       text-transform: uppercase;
-      font-size: 13px;
+      font-size: 14px;
     }
-    tr:hover td { background: #f1f7ff; }
+    tr:hover td {
+      background: #eef5ff;
+    }
     #modal {
-      display:none;
-      position:fixed;
-      top:0; left:0;
-      width:100%; height:100%;
-      background:rgba(0,0,0,0.5);
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
     }
     #modalContent {
-      background:#fff;
-      margin:10% auto;
-      padding:20px;
-      width:350px;
-      border-radius:8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      background: #fff;
+      margin: 10% auto;
+      padding: 25px;
+      width: 380px;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
     }
     input, textarea {
       width: 100%;
-      margin: 5px 0 15px;
+      margin: 8px 0 20px;
       padding: 8px;
-      border: 1px solid #ccc;
+      border: 1px solid #bbb;
       border-radius: 5px;
     }
-    a { color: #007bff; text-decoration: none; }
+    a { color: #0069d9; text-decoration: none; }
     a:hover { text-decoration: underline; }
   </style>
 </head>
@@ -113,16 +117,14 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ CONFIG SECTION (edit here only)
     const CONFIG = {
       galleryName: "World Class Piano Gallery",
       phone: "(555) 123-4567",
-      address: "123 Main Street, Dawsonville, GA 30534",
-      footerNote: "Delivery is FREE within 1000 miles and includes complimentary tuning on arrival.",
+      address: "123 Main Street, Dawsonville, GA",
+      footerNote: "Delivery FREE within 1000 miles • Complimentary tuning included",
       logoPath: "logo.png"
     };
 
-    // ✅ Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyA2932IBDCeUix6OdRaJMDIisHX0SbyDFo",
       authDomain: "pianoinv.firebaseapp.com",
@@ -140,27 +142,29 @@
     let selectedItems = [];
     let logoBase64 = null;
 
-    // 🔹 Setup site header
     document.getElementById("siteName").innerText = CONFIG.galleryName;
     document.getElementById("sitePhone").innerText = "Call " + CONFIG.phone + " to order";
     document.getElementById("siteAddress").innerText = CONFIG.address;
 
-    // 🔹 Convert logo.png to Base64 for PDF embedding
     async function loadLogo() {
-      const response = await fetch(CONFIG.logoPath);
-      const blob = await response.blob();
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
+      try {
+        const resp = await fetch(CONFIG.logoPath);
+        const blob = await resp.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        console.warn("Logo load failed:", err);
+        return null;
+      }
     }
 
-    // 🔹 Load Piano Inventory
     async function loadInventory() {
       try {
-        const querySnapshot = await getDocs(collection(db, "pianos"));
-        inventoryData = querySnapshot.docs.map(doc => doc.data());
+        const snap = await getDocs(collection(db, "pianos"));
+        inventoryData = snap.docs.map(d => d.data());
         renderTable();
       } catch (err) {
         document.getElementById("inventory").innerHTML =
@@ -175,106 +179,132 @@
         container.innerHTML = "<p>No listings found.</p>";
         return;
       }
-
-      let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Serial</th><th>Color</th><th>Length</th><th>Price</th><th>Photo</th></tr>";
+      let html = `<table><tr>
+        <th>Select</th><th>Brand</th><th>Year</th><th>Model</th><th>Length</th><th>Color</th><th>Cost</th><th>Photo</th>
+      </tr>`;
       inventoryData.forEach((item, i) => {
         html += `<tr>
           <td><input type="checkbox" onchange="toggleItem(${i}, this.checked)"></td>
           <td>${item.brand || ""}</td>
-          <td>${item.model || ""}</td>
           <td>${item.year || ""}</td>
-          <td>${item.serial || ""}</td>
-          <td>${item.color || ""}</td>
+          <td>${item.model || ""}</td>
           <td>${item.length || ""}</td>
+          <td>${item.color || ""}</td>
           <td>${item.price || ""}</td>
-          <td>${item.photo ? `<a href="${item.photo}" target="_blank">View</a>` : ""}</td>
+          <td>${ item.photo ? `<a href="${item.photo}" target="_blank">View</a>` : "" }</td>
         </tr>`;
       });
-      html += "</table>";
+      html += `</table>`;
       container.innerHTML = html;
     }
 
-    // Handle selection
-    window.toggleItem = function(index, checked) {
-      if (checked) selectedItems.push(inventoryData[index]);
-      else selectedItems = selectedItems.filter(i => i !== inventoryData[index]);
+    window.toggleItem = function(i, checked) {
+      if (checked) selectedItems.push(inventoryData[i]);
+      else selectedItems = selectedItems.filter(x => x !== inventoryData[i]);
     };
 
-    window.openModal = function() { document.getElementById("modal").style.display = "block"; }
-    window.closeModal = function() { document.getElementById("modal").style.display = "none"; }
+    window.openModal = () => { document.getElementById("modal").style.display = "block"; };
+    window.closeModal = () => { document.getElementById("modal").style.display = "none"; };
 
-    // 🔹 PDF Generator
-    window.generatePDF = async function() {
+    async function generatePDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
-      // Load logo once
+      // load logo if needed
       if (!logoBase64) {
         logoBase64 = await loadLogo();
       }
 
-      let y = 50;
-      let pageNum = 1;
+      // Cover page
+      const margin = 20;
+      if (logoBase64) {
+        const imgW = 60;
+        const imgX = (pageWidth - imgW) / 2;
+        doc.addImage(logoBase64, "PNG", imgX, 20, imgW, imgW * 0.5);
+      }
+      doc.setFontSize(24);
+      doc.text(CONFIG.galleryName, pageWidth/2, 90, { align: "center" });
+      doc.setFontSize(14);
+      doc.text(CONFIG.address, pageWidth/2, 105, { align: "center" });
+      doc.text("Call " + CONFIG.phone, pageWidth/2, 115, { align: "center" });
+      doc.addPage();
+
+      // After cover, list each selected item
+      let y = 25;
+      let pageNum = 2;
 
       const addHeader = () => {
-        doc.setFontSize(18);
-        doc.text(CONFIG.galleryName, pageWidth/2, 15, { align: "center" });
-        doc.setFontSize(11);
-        doc.text("Call " + CONFIG.phone + " to place an order", pageWidth/2, 22, { align: "center" });
-        doc.text(CONFIG.address, pageWidth/2, 28, { align: "center" });
         if (logoBase64) {
-          doc.addImage(logoBase64, "PNG", 10, 5, 20, 20);
+          const imgW = 30;
+          const imgX = (pageWidth - imgW) / 2;
+          doc.addImage(logoBase64, "PNG", imgX, 5, imgW, imgW * 0.5);
         }
-        doc.line(10, 34, pageWidth-10, 34);
+        doc.setFontSize(16);
+        doc.text(CONFIG.galleryName, pageWidth/2, 15, { align: "center" });
+        doc.setFontSize(10);
+        doc.text(CONFIG.address, pageWidth/2, 21, { align: "center" });
+        doc.text("Call " + CONFIG.phone, pageWidth/2, 27, { align: "center" });
+        doc.line(15, 30, pageWidth-15, 30);
+        y = 35;
       };
 
       const addFooter = () => {
         doc.setFontSize(9);
-        doc.line(10, 280, pageWidth-10, 280);
+        doc.line(15, 280, pageWidth-15, 280);
         doc.text(CONFIG.footerNote, pageWidth/2, 286, { align: "center" });
         doc.text(CONFIG.address, pageWidth/2, 292, { align: "center" });
         doc.text("Page " + pageNum, pageWidth-20, 295);
       };
 
       addHeader();
-      doc.setFontSize(12);
-      doc.text("Client: " + document.getElementById("clientName").value, 14, y); y+=8;
-      doc.text("Notes: " + document.getElementById("clientNotes").value, 14, y); y+=12;
 
-      selectedItems.forEach((item, i) => {
-        doc.setFontSize(14);
-        doc.text(`${item.brand || ""} ${item.model || ""}`, 14, y); y+=7;
-        doc.setFontSize(11);
-        if (item.year) doc.text(`Year: ${item.year}`, 14, y), y+=6;
-        if (item.serial) doc.text(`Serial: ${item.serial}`, 14, y), y+=6;
-        if (item.color) doc.text(`Color: ${item.color}`, 14, y), y+=6;
-        if (item.length) doc.text(`Length: ${item.length}`, 14, y), y+=6;
-        if (item.price) doc.text(`Price: ${item.price}`, 14, y), y+=6;
+      for (let i = 0; i < selectedItems.length; i++) {
+        const item = selectedItems[i];
 
+        // If there’s a photo, embed it (thumbnail)
         if (item.photo) {
-          doc.setTextColor(0,0,255);
-          doc.textWithLink("View Photo", 14, y, { url: item.photo });
-          doc.setTextColor(0,0,0);
-          y+=10;
-        } else { y+=6; }
+          try {
+            const resp = await fetch(item.photo);
+            const blob = await resp.blob();
+            const reader = new FileReader();
+            const imgData = await new Promise((res) => {
+              reader.onload = () => res(reader.result);
+              reader.readAsDataURL(blob);
+            });
+            const imgW = 40;
+            const imgH =  (imgW * 0.7);
+            doc.addImage(imgData, "PNG", margin, y, imgW, imgH);
+          } catch (err) {
+            console.warn("Could not embed photo:", err);
+          }
+        }
 
-        y+=4;
-        if (y>250 && i < selectedItems.length-1) {
+        // Then the text fields
+        doc.setFontSize(12);
+        const xText = margin + 45;  // offset if image is used
+        doc.text(`${item.brand || ""} ${item.model || ""} (${item.year || ""})`, xText, y + 5);
+        doc.setFontSize(10);
+        doc.text(`Length: ${item.length || ""}`, xText, y + 12);
+        doc.text(`Color: ${item.color || ""}`, xText, y + 18);
+        doc.text(`Cost: ${item.price || ""}`, xText, y + 24);
+
+        y += 40;
+
+        if (y > 240 && i < selectedItems.length - 1) {
           addFooter();
           doc.addPage();
           pageNum++;
-          y=50;
           addHeader();
         }
-      });
+      }
 
       addFooter();
-      doc.save("piano-brochure.pdf");
+      doc.save("fancy-piano-brochure.pdf");
       closeModal();
-    };
+    }
 
-    // Load everything
+    // initialize
     loadLogo();
     loadInventory();
   </script>
