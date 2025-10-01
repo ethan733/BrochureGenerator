@@ -1,0 +1,29 @@
+[
+  {
+    "brand": "Steinway",
+    "model": "Model D",
+    "year": 2018,
+    "serial": "123456",
+    "color": "Ebony Polish",
+    "length": "9'0\"",
+    "price": "$150,000"
+  },
+  {
+    "brand": "Yamaha",
+    "model": "C3",
+    "year": 2015,
+    "serial": "987654",
+    "color": "Polished White",
+    "length": "6'1\"",
+    "price": "$40,000"
+  },
+  {
+    "brand": "Kawai",
+    "model": "GX-2",
+    "year": 2020,
+    "serial": "456789",
+    "color": "Satin Ebony",
+    "length": "5'11\"",
+    "price": "$32,000"
+  }
+]
