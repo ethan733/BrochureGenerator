@@ -13,6 +13,7 @@
     #modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
     #modalContent { background:#fff; margin:10% auto; padding:20px; width:300px; border-radius:8px; }
     textarea, input { width: 100%; }
+    a { color: #007bff; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -42,7 +43,7 @@
       const res = await fetch("inventory.json");
       inventoryData = await res.json();
       const container = document.getElementById("inventory");
-      let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Serial</th><th>Color</th><th>Length</th><th>Price</th></tr>";
+      let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Serial</th><th>Color</th><th>Length</th><th>Price</th><th>Photo</th></tr>";
       inventoryData.forEach((item, i) => {
         html += `<tr>
           <td><input type="checkbox" onchange="toggleItem(${i}, this.checked)"></td>
@@ -53,6 +54,7 @@
           <td>${item.color}</td>
           <td>${item.length}</td>
           <td>${item.price}</td>
+          <td><a href="${item.photo}" target="_blank">View Photo</a></td>
         </tr>`;
       });
       html += "</table>";
@@ -88,7 +90,13 @@
         doc.text(`Serial: ${item.serial}`, 20, y); y += 6;
         doc.text(`Color: ${item.color}`, 20, y); y += 6;
         doc.text(`Length: ${item.length}`, 20, y); y += 6;
-        doc.text(`Price: ${item.price}`, 20, y); y += 12;
+        doc.text(`Price: ${item.price}`, 20, y); y += 6;
+
+        // Add photo link
+        doc.setTextColor(0, 0, 255);
+        doc.textWithLink("View Photo", 20, y, { url: item.photo });
+        doc.setTextColor(0, 0, 0);
+        y += 12;
 
         if (y > 270) { doc.addPage(); y = 20; }
       });
