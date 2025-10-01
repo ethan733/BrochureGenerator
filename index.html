@@ -119,7 +119,7 @@
       <label>Notes:</label>
       <textarea id="clientNotes" rows="4"></textarea>
 
-      <button class="btn" onclick="generatePDF()">Generate PDF</button>
+      <button class="btn" onclick="updateContactInfo(); generatePDF();">Generate PDF</button>
       <button class="btn" style="background:#6c757d" onclick="closeModal()">Cancel</button>
     </div>
   </div>
@@ -200,7 +200,17 @@
       container.innerHTML = html;
     }
 
-    // Globals
+    // 🔹 Update contact info in header
+    window.updateContactInfo = function() {
+      const galleryName = document.getElementById("galleryName").value || "World Class Piano Gallery";
+      const contactPhone = document.getElementById("contactPhone").value || "(555) 123-4567";
+      const contactAddress = document.getElementById("contactAddress").value || "123 Main Street, Dawsonville, GA";
+
+      document.getElementById("siteName").innerText = galleryName;
+      document.getElementById("sitePhone").innerText = contactPhone;
+      document.getElementById("siteAddress").innerText = contactAddress;
+    };
+
     window.toggleItem = function(i, checked) {
       if (checked) selectedItems.push(inventoryData[i]);
       else selectedItems = selectedItems.filter(x => x !== inventoryData[i]);
@@ -209,7 +219,7 @@
     window.openModal = () => { document.getElementById("modal").style.display = "block"; };
     window.closeModal = () => { document.getElementById("modal").style.display = "none"; };
 
-    // PDF Generator
+    // 🔹 PDF Generator
     window.generatePDF = async function() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -218,22 +228,26 @@
 
       if (!logoBase64) logoBase64 = await loadLogo();
 
-      // Get inputs
-      const galleryName = document.getElementById("galleryName").value || "World Class Piano Gallery";
-      const contactPhone = document.getElementById("contactPhone").value || "(555) 123-4567";
-      const contactAddress = document.getElementById("contactAddress").value || "123 Main Street, Dawsonville, GA";
+      const galleryName = document.getElementById("siteName").innerText;
+      const contactPhone = document.getElementById("sitePhone").innerText;
+      const contactAddress = document.getElementById("siteAddress").innerText;
       const footerNote = document.getElementById("footerNote").value || "Delivery FREE within 1000 miles • Complimentary tuning included";
 
-      // ✅ Background watermark
+      // ✅ Background watermark (faint, centered)
       if (logoBase64) {
-        doc.addImage(logoBase64, "PNG", pageWidth/4, pageHeight/4, pageWidth/2, pageWidth/4, "", "NONE", 0.1);
+        const wmWidth = pageWidth * 0.6;
+        const wmHeight = wmWidth * 0.4;
+        const wmX = (pageWidth - wmWidth) / 2;
+        const wmY = (pageHeight - wmHeight) / 2;
+        doc.addImage(logoBase64, "PNG", wmX, wmY, wmWidth, wmHeight, "", "FAST", 0.1);
       }
 
       // Cover page
       if (logoBase64) {
-        const imgW = 60;
+        const imgW = 50;
+        const imgH = 35;
         const imgX = (pageWidth - imgW) / 2;
-        doc.addImage(logoBase64, "PNG", imgX, 20, imgW, imgW * 0.5);
+        doc.addImage(logoBase64, "PNG", imgX, 20, imgW, imgH);
       }
       doc.setFontSize(24);
       doc.text(galleryName, pageWidth/2, 90, { align: "center" });
@@ -248,8 +262,9 @@
       const addHeader = () => {
         if (logoBase64) {
           const imgW = 30;
+          const imgH = 20;
           const imgX = (pageWidth - imgW) / 2;
-          doc.addImage(logoBase64, "PNG", imgX, 5, imgW, imgW * 0.5);
+          doc.addImage(logoBase64, "PNG", imgX, 5, imgW, imgH);
         }
         doc.setFontSize(16);
         doc.text(galleryName, pageWidth/2, 20, { align: "center" });
