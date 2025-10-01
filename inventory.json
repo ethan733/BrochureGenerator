@@ -6,7 +6,8 @@
     "serial": "123456",
     "color": "Ebony Polish",
     "length": "9'0\"",
-    "price": "$150,000"
+    "price": "$150,000",
+    "photo": "https://example.com/images/steinway-d.jpg"
   },
   {
     "brand": "Yamaha",
@@ -15,7 +16,8 @@
     "serial": "987654",
     "color": "Polished White",
     "length": "6'1\"",
-    "price": "$40,000"
+    "price": "$40,000",
+    "photo": "https://example.com/images/yamaha-c3.jpg"
   },
   {
     "brand": "Kawai",
@@ -24,6 +26,7 @@
     "serial": "456789",
     "color": "Satin Ebony",
     "length": "5'11\"",
-    "price": "$32,000"
+    "price": "$32,000",
+    "photo": "https://example.com/images/kawai-gx2.jpg"
   }
 ]
