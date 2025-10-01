@@ -9,9 +9,10 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background: #f4f4f4; }
-    button { margin: 10px 0; padding: 8px 14px; }
+    button { margin: 10px 0; padding: 8px 14px; cursor:pointer; }
     #modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
     #modalContent { background:#fff; margin:10% auto; padding:20px; width:300px; border-radius:8px; }
+    textarea, input { width: 100%; }
   </style>
 </head>
 <body>
@@ -36,17 +37,21 @@
     let inventoryData = [];
     let selectedItems = [];
 
+    // Load inventory from JSON
     async function loadInventory() {
-      const res = await fetch("inventory.json"); // open-read file
+      const res = await fetch("inventory.json");
       inventoryData = await res.json();
       const container = document.getElementById("inventory");
-      let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Price</th></tr>";
+      let html = "<table><tr><th>Select</th><th>Brand</th><th>Model</th><th>Year</th><th>Serial</th><th>Color</th><th>Length</th><th>Price</th></tr>";
       inventoryData.forEach((item, i) => {
         html += `<tr>
           <td><input type="checkbox" onchange="toggleItem(${i}, this.checked)"></td>
           <td>${item.brand}</td>
           <td>${item.model}</td>
           <td>${item.year}</td>
+          <td>${item.serial}</td>
+          <td>${item.color}</td>
+          <td>${item.length}</td>
           <td>${item.price}</td>
         </tr>`;
       });
@@ -68,15 +73,23 @@
       let y = 20;
 
       doc.setFontSize(18);
-      doc.text("Inventory Brochure", 20, y); y += 10;
+      doc.text("Inventory Brochure", 20, y); y += 12;
 
       doc.setFontSize(12);
-      doc.text("Client: " + document.getElementById("clientName").value, 20, y); y += 10;
-      doc.text("Notes: " + document.getElementById("clientNotes").value, 20, y); y += 20;
+      doc.text("Client: " + document.getElementById("clientName").value, 20, y); y += 8;
+      doc.text("Notes: " + document.getElementById("clientNotes").value, 20, y); y += 15;
 
       selectedItems.forEach(item => {
-        doc.text(`${item.brand} ${item.model} (${item.year}) - ${item.color || ''}`, 20, y); y += 10;
-        doc.text("Price: " + item.price, 20, y); y += 15;
+        doc.setFontSize(14);
+        doc.text(`${item.brand} ${item.model}`, 20, y); y += 8;
+
+        doc.setFontSize(11);
+        doc.text(`Year: ${item.year}`, 20, y); y += 6;
+        doc.text(`Serial: ${item.serial}`, 20, y); y += 6;
+        doc.text(`Color: ${item.color}`, 20, y); y += 6;
+        doc.text(`Length: ${item.length}`, 20, y); y += 6;
+        doc.text(`Price: ${item.price}`, 20, y); y += 12;
+
         if (y > 270) { doc.addPage(); y = 20; }
       });
 
